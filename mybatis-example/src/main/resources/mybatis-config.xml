@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	<!-- 根据db.properties中获取到数据库驱动类型、数据库连接、账号、密码 -->
+	<properties resource="db.properties"></properties>
+
+	<!-- setttings 里面是 MyBatis的一些核心配置 -->
+	<settings>
+		<!--  是否使用二级缓存(后面会专门提到缓存，先记下)  是整个工程中所有映射器配置缓存的 开关，即是一个全局缓存开关  默认值 true-->
+		<setting name="cacheEnabled" value="true"/>
+		<!-- 是否开启延迟加载  控制全局是否使用延迟加载 （association、collection）。当有特殊关联关系需要单独配置时，可以使用 fetchType 属性来覆盖此配置 
+		默认为false。  说白了,就是通过mybatis的联表查询的时候,是否要立即查询出关联表的数据,默认为false 不开启
+		当相应联表的数据被使用到时,比如调用entity的get方法的时候 会调用查询 -->
+		<setting name="lazyLoadingEnabled" value="false"/>
+		<!-- 是否需要侵入式延迟加载 ，开启时，无论调用什么方法加载某个对象，都会加载该对象的所有属性，关闭之后只会按需加载
+		默认值为false。   当设置为true时,调用任意的方法均会触发延迟对象的加载逻辑。 -->
+		<setting name="aggressiveLazyLoading" value="false"/>
+		<!--指定哪个对象的方法触发一次延迟加载   配置需要触发延迟加载的方法的名字， 该方法就会触发一次延迟加载
+		即可以指定一些方法来触发延迟对象的加载逻辑。-->
+		<setting name="lazyLoadTriggerMethods" value="equals,clone,hashCode"/>
+		<!--设置默认的执行器  有三种执行器：SIMPLE为普通执行器； REUSE 执行器会重用与处理语句； BATCH 执行器将重用语句并执行批量更新
+		默认为SIMPLE -->
+		<setting name="defaultExecutorType" value="SIMPLE"/>
+		<!--MyBatis 利用本地缓存机制（Local Cache）防止循环引用（circular references）和加 速重复嵌套查询  
+		 默认值为 SESSION，这种情况下会缓存一个会话中执行的所有查询。若设置值 为 STATEMENT，本地会话仅用在语句执 行上，对相同 SqlSession 的不同调用 将不会共享数据
+		即如果设置为SESSION,则会使用到mybatis的一级缓存,如果设置为STATEMENT,则一级缓存失效-->
+		<setting name="localCacheScope" value="SESSION"/>
+		<!-- 日志的实现方式，指定mybatis所用日志的具体实现，未指定时将自动查找，有LOG4J、LOG4J2、SLF4J、STDOUT_LOGGING等 -->
+		<setting name="logImpl" value="STDOUT_LOGGING"/>
+	</settings>
+	
+	<typeAliases>
+		<typeAlias type="com.peng.entity.Member" alias="member"/>
+	</typeAliases>
+	
+	<typeHandlers>
+		<typeHandler handler="com.peng.mybatis.typehandler.JsonTypeHandler"/>
+	</typeHandlers>
+	
+	<objectFactory type="com.peng.mybatis.objectfactory.ObjectFactorySupport">
+	</objectFactory>
+	
+	
+	<plugins>
+		<plugin interceptor="com.peng.mybatis.plugins.PagePlugin"></plugin>
+	</plugins>
+	
+	<!-- 配置环境信息，可用于区分dev、test、stage、prod-->
+	<environments default="development">
+	    <!-- 指定一个环境的配置信息 -->
+		<environment id="development">
+		    <!-- 要使用的事务类型 -->
+			<transactionManager type="JDBC"></transactionManager>
+			<!-- 数据源的配置 -->
+			<dataSource type="POOLED">
+				<property name="driver" value="${jdbc.driver}" />
+				<property name="url" value="${jdbc.url}" />
+				<property name="username" value="${jdbc.username}" />
+				<property name="password" value="${jdbc.password}" />
+			</dataSource>
+		</environment>
+	</environments>
+	
+	<!-- 配置mybatis的mapper映射文件 -->
+	<mappers>
+		<mapper resource="MemberMapper.xml"/>
+		<mapper resource="PurchaseLogMapper.xml"/>
+	</mappers>
+</configuration>
