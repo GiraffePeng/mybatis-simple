@@ -78,7 +78,7 @@ public class SpringJDBC {
 			for (Field field : fields) {
 				fieldMap.put(field.getName(), field);
 			}
-		}
+		} 
 		
 		@Override
 		public T mapRow(ResultSet rs, int i) throws SQLException {
