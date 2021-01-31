@@ -4,12 +4,13 @@
   <!--针对member表 开启二级缓存-->
   <!-- <cache /> -->
   <!-- <cache-ref namespace="com.peng.mybatis.mapper.PurchaseLogMapper"/> -->
-  <resultMap id="BaseResultMap" type="com.peng.entity.Member" >
+  <resultMap id="BaseResultQueryMap" type="com.peng.entity.Member" >
     <id column="id" property="id" jdbcType="BIGINT" />
     <result column="name" property="name" jdbcType="VARCHAR" />
     <result column="phone" property="phone" jdbcType="VARCHAR" />
     <result column="detail" property="detail" jdbcType="VARCHAR" typeHandler="com.peng.mybatis.typehandler.JsonTypeHandler"/>
     <!-- 
+                       嵌套查询,会出现N+1的问题
                         使用collection标明一对多的关系，通过声明的select中的内容，会在调用完member表的查询后，
     	再去调用com.peng.mybatis.mapper.PurchaseLogMapper.selectListByMemberId
     	方法来完成关联表的查询
@@ -18,27 +19,144 @@
     select="com.peng.mybatis.mapper.PurchaseLogMapper.selectListByMemberId" column="{memberId=id}">
     </collection>
   </resultMap>
+  
+  <resultMap id="BaseResultMap" type="com.peng.entity.Member" >
+    <id column="id" property="id" jdbcType="BIGINT" />
+    <result column="name" property="name" jdbcType="VARCHAR" />
+    <result column="phone" property="phone" jdbcType="VARCHAR" />
+    <result column="detail" property="detail" jdbcType="VARCHAR" typeHandler="com.peng.mybatis.typehandler.JsonTypeHandler"/>
+    <!-- 嵌套结果 -->      
+    <collection property="purchaseLogs"  javaType="java.util.ArrayList" ofType="com.peng.entity.PurchaseLog">
+    	<result column="purchase_price" property="purchasePrice" jdbcType="DECIMAL"  />
+        <result column="purchase_name" property="purchaseName" jdbcType="VARCHAR"  />
+    </collection>
+  </resultMap>
+  
+  <sql id="Example_Where_Clause" >
+    <where >
+      <foreach collection="oredCriteria" item="criteria" separator="or" >
+        <if test="criteria.valid" >
+          <trim prefix="(" suffix=")" prefixOverrides="and" >
+            <foreach collection="criteria.criteria" item="criterion" >
+              <choose >
+                <when test="criterion.noValue" >
+                  and ${criterion.condition}
+                </when>
+                <when test="criterion.singleValue" >
+                  and ${criterion.condition} #{criterion.value}
+                </when>
+                <when test="criterion.betweenValue" >
+                  and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
+                </when>
+                <when test="criterion.listValue" >
+                  and ${criterion.condition}
+                  <foreach collection="criterion.value" item="listItem" open="(" close=")" separator="," >
+                    #{listItem}
+                  </foreach>
+                </when>
+              </choose>
+            </foreach>
+          </trim>
+        </if>
+      </foreach>
+    </where>
+  </sql>
+  
+  
   <sql id="Base_Column_List" >
     id, name, phone, detail
   </sql>
   
-  <select id="selectListByPage" resultMap="BaseResultMap" parameterType="map">
+  <select id="selectListByRowBounds" resultMap="BaseResultMap" >
+  	 select
+  	 <include refid="Base_Column_List" />
+  	 from member
+  </select>
+  
+  <select id="selectListByPageHelper" resultMap="BaseResultMap" >
+  	 select
+  	 <include refid="Base_Column_List" />
+  	 from member
+  </select>
+  
+  <select id="selectByExample" resultMap="BaseResultMap" parameterType="com.peng.entity.MemberExample" >
+    select
+    <if test="distinct" >
+      distinct
+    </if>
+    <include refid="Base_Column_List" />
+    from member
+    <if test="_parameter != null" >
+      <include refid="Example_Where_Clause" />
+    </if>
+    <if test="orderByClause != null" >
+      order by ${orderByClause}
+    </if>
+  </select>
+  
+   <!-- 验证嵌套结果查询 -->      
+   <select id="selectList" resultMap="BaseResultMap">
+     select  a.id, a.name, a.phone, a.detail, b.purchase_price, b.purchase_name
+     from member a 
+     left join purchase_log b 
+     on a.id = b.member_id
+   </select>
+  
+  <select id="selectListByPage" resultMap="BaseResultQueryMap" parameterType="map">
   	select 
   	<include refid="Base_Column_List" />
     from member
     <where>
-    	<if test="name != null and name != ''">
-    		and name = #{name,jdbcType=VARCHAR}
-    	</if>
+    	<choose>
+    		<when test="name != null and name != ''">
+    			and name = #{name,jdbcType=VARCHAR}
+    		</when>
+    		<when test="phone != null and phone != ''">
+    			and phone = #{phone,jdbcType=VARCHAR}
+    		</when>
+    		<otherwise>
+    		</otherwise>
+    	</choose>
     </where>
   </select>  
   
-  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Long" >
+  <select id="selectByPrimaryKey" resultMap="BaseResultQueryMap" parameterType="java.lang.Long" >
     select 
     <include refid="Base_Column_List" />
     from member
     where id = #{id,jdbcType=BIGINT}
   </select>
+  
+  <insert id="insertBatch" parameterType="list">
+  	insert into member(name,phone,detail)
+  	values
+  	<foreach collection="list" item="item" separator=",">
+  		(
+  		#{name,jdbcType=VARCHAR}, #{phone,jdbcType=VARCHAR},
+  		#{detail,jdbcType=VARCHAR,typeHandler=com.peng.mybatis.typehandler.JsonTypeHandler}
+  		)
+  	</foreach>
+  </insert>
+  
+  <update id="updateBatch" parameterType="list">
+  	update member set 
+  	name = 
+  	<foreach collection="list" item="item" index="index" separator=" " open="case id" close="end" >
+  		when #{item.id} then #{item.name}
+  	</foreach>
+  	,phone = 
+  	<foreach collection="list" item="item" index="index" separator=" " open="case id" close="end" >
+  		when #{item.id} then #{item.phone}
+  	</foreach>
+  	,detail = 
+  	<foreach collection="list" item="item" index="index" separator=" " open="case id" close="end" >
+  		when #{item.id} then #{item.detail,typeHandler=com.peng.mybatis.typehandler.JsonTypeHandler}
+  	</foreach>
+  	where id in 
+  	<foreach collection="list" item="item" index="index" separator="," open="(" close=")" >
+  		#{item.id}
+  	</foreach>
+  </update>
 
  
   <insert id="insertSelective" parameterType="com.peng.entity.Member" >

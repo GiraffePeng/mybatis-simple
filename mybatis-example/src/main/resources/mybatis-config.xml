@@ -43,6 +43,7 @@
 	
 	<plugins>
 		<plugin interceptor="com.peng.mybatis.plugins.PagePlugin"></plugin>
+		<plugin interceptor="com.github.pagehelper.PageInterceptor"></plugin>
 	</plugins>
 	
 	<!-- 配置环境信息，可用于区分dev、test、stage、prod-->

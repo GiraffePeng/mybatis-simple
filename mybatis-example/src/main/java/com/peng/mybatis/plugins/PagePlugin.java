@@ -26,7 +26,9 @@ public class PagePlugin implements Interceptor {
 	public Object intercept(Invocation invocation) throws Throwable {
 		//获取query方法的参数列表的参数
 		MappedStatement ms = (MappedStatement) invocation.getArgs()[0];
-		
+		if(!(invocation.getArgs()[1] instanceof Map)) {
+			return invocation.proceed();
+		}
 		Map<String, Object> param = (Map<String, Object>) invocation.getArgs()[1];
 		//判断传入的参数中是否page对象，要求page传入到第一位的参数位置。如果存在page，则进行分页操作
 		if(!(param.get("arg0") instanceof Page)) {
